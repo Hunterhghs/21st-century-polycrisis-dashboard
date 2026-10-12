@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Polycrisis Atlas 2000–2025</title>
+  <meta name="description" content="An interactive map of overlapping global crises in the 21st century — conflict, climate, health, food and energy, political upheaval and financial shocks, 2000–2025.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%233a3833'/%3E%3Ccircle cx='11' cy='13' r='4' fill='%232a78d6'/%3E%3Cpath d='M20 8l5 9h-10z' fill='%23e34948'/%3E%3Crect x='14' y='18' width='7' height='7' fill='%23eda100'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // Apply saved theme before paint
+    try { const t = localStorage.getItem("polycrisis-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <div>
+        <p class="kicker">Global Polycrisis Atlas · 2000–2025</p>
+        <h1>The age of overlapping crises</h1>
+        <p class="lede">A <em>polycrisis</em> is what happens when shocks in separate systems — war, climate, disease, food, politics, finance — hit at once and amplify one another. This map tracks <span id="eventCount">112</span> of the century's defining crises and where they converge.</p>
+      </div>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle colour theme">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg>
+        <span id="themeLabel">Theme</span>
+      </button>
+    </header>
+
+    <section class="kpis" id="kpis" aria-label="Key figures"></section>
+
+    <section class="controls" aria-label="Filters">
+      <div class="control-row">
+        <div class="year-control">
+          <button id="playBtn" class="icon-btn" type="button" aria-label="Play timeline">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path id="playIcon" d="M7 5v14l12-7z" fill="currentColor"/></svg>
+          </button>
+          <label for="yearSlider" class="sr-only">Year</label>
+          <input type="range" id="yearSlider" min="2000" max="2025" step="1" value="2025">
+          <output id="yearOut" for="yearSlider">2025</output>
+        </div>
+        <div class="seg" role="group" aria-label="Time window">
+          <button type="button" data-mode="year" aria-pressed="true">Active in year</button>
+          <button type="button" data-mode="cumulative" aria-pressed="false">Cumulative since 2000</button>
+        </div>
+        <label class="select">
+          <span>Shade countries by</span>
+          <select id="shadeSelect">
+            <option value="domains">Concurrent crisis domains</option>
+            <option value="events">Number of crises</option>
+            <option value="none">No shading</option>
+          </select>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="globalToggle" checked>
+          <span>Count global shocks everywhere</span>
+        </label>
+      </div>
+      <div class="chips" id="domainChips" role="group" aria-label="Crisis domains (click to filter)"></div>
+    </section>
+
+    <main class="main">
+      <section class="card map-card" aria-label="World map">
+        <div class="card-head">
+          <h2 id="mapTitle">Crisis map</h2>
+          <div class="zoom-btns">
+            <button type="button" class="icon-btn" id="zoomIn" aria-label="Zoom in">+</button>
+            <button type="button" class="icon-btn" id="zoomOut" aria-label="Zoom out">−</button>
+            <button type="button" class="icon-btn" id="zoomReset" aria-label="Reset zoom">⟲</button>
+          </div>
+        </div>
+        <div class="map-wrap" id="mapWrap">
+          <svg id="map" viewBox="0 0 960 470" role="img" aria-label="World map of crises"></svg>
+          <div class="map-status" id="mapStatus">Loading map…</div>
+        </div>
+        <div class="map-legend" id="mapLegend"></div>
+      </section>
+
+      <aside class="card panel" id="panel" aria-live="polite"></aside>
+    </main>
+
+    <section class="card timeline-card" aria-label="Timeline">
+      <div class="card-head">
+        <h2>Crises active each year, by domain</h2>
+        <p class="hint">Click a year to jump the map there</p>
+      </div>
+      <svg id="timeline" viewBox="0 0 960 300" role="img" aria-label="Stacked bar chart of active crises per year"></svg>
+    </section>
+
+    <section aria-label="Global indicators">
+      <div class="section-head">
+        <h2>The stresses underneath</h2>
+        <p class="hint">Slow-moving global indicators. The marker follows the selected year.</p>
+      </div>
+      <div class="indicators" id="indicators"></div>
+    </section>
+
+    <section class="card about">
+      <details id="tableDetails">
+        <summary>Data table — crises in the current view</summary>
+        <div class="table-wrap"><table id="eventTable"></table></div>
+      </details>
+
+      <div class="about-grid">
+        <div>
+          <h2>How to read this</h2>
+          <p><strong>Markers</strong> are individual crises, placed at their epicentre. Shape and colour show the primary domain; size shows severity (significant, major, catastrophic or systemic). A dashed ring marks a <strong>global shock</strong> that touched most countries.</p>
+          <p><strong>Country shading</strong> counts how many different crisis domains hit a country in the selected window — a rough measure of <em>concurrence</em>, the defining feature of a polycrisis. Many crises carry secondary domains (Sudan's war is also a food crisis), and those count too. Global shocks add their primary domain to every country when the toggle is on.</p>
+          <p>This is a curated, illustrative catalogue — not an exhaustive database. Inclusion reflects scale and systemic impact; figures are rounded and many are contested estimates. Data runs through 2025; “ongoing” means still active at the end of 2025.</p>
+        </div>
+        <div>
+          <h2>Sources</h2>
+          <ul class="sources">
+            <li>Event figures: UN OCHA, UNHCR, WHO, IPC, EM-DAT (CRED), Uppsala Conflict Data Program, Costs of War (Brown University), Iraq Body Count, World Bank, IMF, World Weather Attribution, national agencies.</li>
+            <li>Temperature: NASA GISS Surface Temperature Analysis (GISTEMP v4).</li>
+            <li>CO₂: NOAA Global Monitoring Laboratory, Mauna Loa.</li>
+            <li>Armed conflicts: UCDP/PRIO Armed Conflict Dataset (approximate counts).</li>
+            <li>Displacement: UNHCR Global Trends reports.</li>
+            <li>Food prices: FAO Food Price Index. Acute hunger: Global Report on Food Crises (FSIN).</li>
+            <li>Concept: Cascade Institute; Adam Tooze; World Economic Forum Global Risks Report.</li>
+            <li>Boundaries: Natural Earth via <code>world-atlas</code>; borders shown are not an endorsement.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">Built with D3.js · Data 2000–2025 · <a href="https://github.com/Hunterhghs/21st-century-polycrisis-dashboard">Source on GitHub</a></footer>
+  </div>
+
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+  <script src="data/events.js"></script>
+  <script src="data/indicators.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
